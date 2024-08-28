@@ -1,0 +1,129 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <MPU6050.h>
+#include <math.h>
+
+// Define the screen width and height
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+
+// Define the I2C address of the OLED display
+#define OLED_I2C_ADDRESS 0x3C  // Common I2C address for SSD1306
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+MPU6050 mpu;
+
+// Define the cube size
+const float cubeSize = 40.0;   // Size of the cube
+const float halfCubeSize = cubeSize / 2.0;
+
+float angleX = 0, angleY = 0;
+float smoothFactor = 0.9;  // Smoothing factor for angles
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize the display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
+
+  display.clearDisplay();
+  display.display();
+
+  // Initialize MPU6050
+  Wire.begin();
+  mpu.initialize();
+  if (!mpu.testConnection()) {
+    Serial.println("MPU6050 connection failed");
+    while (1);
+  }
+
+  Serial.println("MPU6050 initialized successfully");
+}
+
+void loop() {
+  // Read raw accel/gyro measurements from the MPU6050
+  int16_t ax, ay, az, gx, gy, gz;
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  // Calculate angles (pitch and roll)
+  float newAngleX = atan2(ax, sqrt(ay * ay + az * az)) * 180.0 / PI;
+  float newAngleY = atan2(ay, sqrt(ax * ax + az * az)) * 180.0 / PI;
+
+  // Apply smoothing to the angles
+  angleX = smoothFactor * angleX + (1.0 - smoothFactor) * newAngleX;
+  angleY = smoothFactor * angleY + (1.0 - smoothFactor) * newAngleY;
+
+  // Clear the display
+  display.clearDisplay();
+
+  // Draw the 3D cube with an "X" on one side
+  drawCubeWithX(angleX, angleY);
+
+  // Display what has been drawn
+  display.display();
+
+  delay(50);  // Reduced delay for smoother updates
+}
+
+void drawCubeWithX(float pitch, float roll) {
+  float vertices[8][3] = {
+    { -halfCubeSize, -halfCubeSize, -halfCubeSize },
+    { halfCubeSize, -halfCubeSize, -halfCubeSize },
+    { halfCubeSize, halfCubeSize, -halfCubeSize },
+    { -halfCubeSize, halfCubeSize, -halfCubeSize },
+    { -halfCubeSize, -halfCubeSize, halfCubeSize },
+    { halfCubeSize, -halfCubeSize, halfCubeSize },
+    { halfCubeSize, halfCubeSize, halfCubeSize },
+    { -halfCubeSize, halfCubeSize, halfCubeSize }
+  };
+
+  float rotatedVertices[8][2];
+  
+  // Rotation matrix for pitch (X-axis) and roll (Y-axis)
+  for (int i = 0; i < 8; i++) {
+    float x = vertices[i][0];
+    float y = vertices[i][1];
+    float z = vertices[i][2];
+    
+    // Apply pitch rotation around the X-axis
+    float newY = y * cos(pitch) - z * sin(pitch);
+    float newZ = y * sin(pitch) + z * cos(pitch);
+
+    // Apply roll rotation around the Y-axis
+    float newX = x * cos(roll) + newZ * sin(roll);
+    newZ = -x * sin(roll) + newZ * cos(roll);
+
+    // Project the 3D coordinates to 2D for the OLED
+    rotatedVertices[i][0] = SCREEN_WIDTH / 2 + newX;  // X
+    rotatedVertices[i][1] = SCREEN_HEIGHT / 2 + newY;  // Y
+  }
+
+  // Draw cube edges
+  drawLine(rotatedVertices[0], rotatedVertices[1]);
+  drawLine(rotatedVertices[1], rotatedVertices[2]);
+  drawLine(rotatedVertices[2], rotatedVertices[3]);
+  drawLine(rotatedVertices[3], rotatedVertices[0]);
+
+  drawLine(rotatedVertices[4], rotatedVertices[5]);
+  drawLine(rotatedVertices[5], rotatedVertices[6]);
+  drawLine(rotatedVertices[6], rotatedVertices[7]);
+  drawLine(rotatedVertices[7], rotatedVertices[4]);
+
+  drawLine(rotatedVertices[0], rotatedVertices[4]);
+  drawLine(rotatedVertices[1], rotatedVertices[5]);
+  drawLine(rotatedVertices[2], rotatedVertices[6]);
+  drawLine(rotatedVertices[3], rotatedVertices[7]);
+
+  // Draw an "X" on the front face (vertices 0, 1, 2, 3)
+  drawLine(rotatedVertices[0], rotatedVertices[2]); // Diagonal 1
+  drawLine(rotatedVertices[1], rotatedVertices[3]); // Diagonal 2
+}
+
+void drawLine(float *v1, float *v2) {
+  display.drawLine(v1[0], v1[1], v2[0], v2[1], WHITE);
+}
