@@ -36,11 +36,11 @@ Adds an "X" marking on the front face (diagonal lines) for visual orientation
 Updates at approximately 20 FPS (50ms delay)
 
 Key Features
-✅ Real-time motion tracking - Cube follows physical device movement
-✅ Smooth animation - Noise filtering for stable display
-✅ 3D wireframe rendering - Efficient edge-only drawing
-✅ Low resource usage - Optimized for microcontroller constraints
-✅ No external libraries needed beyond standard ones
+ Real-time motion tracking - Cube follows physical device movement
+ Smooth animation - Noise filtering for stable display
+ 3D wireframe rendering - Efficient edge-only drawing
+ Low resource usage - Optimized for microcontroller constraints
+ No external libraries needed beyond standard ones
 
 Hardware Connection Guide
 text
@@ -66,24 +66,3 @@ X' = X×cos(φ) + Z'×sin(φ)
 
 Z'' = -X×sin(φ) + Z'×cos(φ)
 
-Potential Applications
-Interactive display - Product demonstration stands
-
-Educational tool - Teaching 3D graphics concepts
-
-Gaming controller - Tilt-controlled games
-
-Orientation visualization - Robotics or drone attitude display
-
-Digital level - Enhanced with 3D visual feedback
-
-Performance Optimizations
-The code uses:
-
-Fixed-point math for faster computation
-
-Wireframe only (no surface filling) to reduce draw calls
-
-Smoothing buffer to prevent display flicker
-
-Efficient edge drawing - 12 lines per frame instead of complex polygons
